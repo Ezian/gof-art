@@ -17,23 +17,7 @@ type asciiRequest struct {
 }
 
 // Last image generated
-var (
-	postedImage = make(chan string)
-	gettedImage = make(chan string)
-)
-
-func cacheManager() {
-	var lastGenerated string
-	for {
-		select {
-		// New posted image
-		case lastGenerated = <-postedImage:
-			// No new image : we update the read channel
-		case gettedImage <- lastGenerated:
-		}
-	}
-
-}
+var lastGenerated string
 
 func downloadImage(url string) (*image.Image, error) {
 	response, err := http.Get(url)
@@ -59,7 +43,7 @@ func handleASCII(rw http.ResponseWriter, req *http.Request) {
 }
 func handleGetASCII(rw http.ResponseWriter, req *http.Request) {
 	// Naïve and wrong implementation
-	io.WriteString(rw, <-gettedImage)
+	io.WriteString(rw, lastGenerated)
 }
 
 func handlePostASCII(rw http.ResponseWriter, req *http.Request) {
@@ -85,20 +69,17 @@ func handlePostASCII(rw http.ResponseWriter, req *http.Request) {
 		http.Error(rw, fmt.Sprintf("Generating Ascii Art failed. %v", err), http.StatusInternalServerError)
 		return
 	}
-	lastGenerated := fmt.Sprintf(`
+	lastGenerated = fmt.Sprintf(`
 	Image from %q
 	Generated in %v
 
 	%s
 	`, data.URL, time.Since(start), string(result))
 
-	postedImage <- lastGenerated
 	io.WriteString(rw, lastGenerated)
 }
 
 func main() {
-	go cacheManager()
-
 	http.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(rw, "Hello, you've requested: %s and that's wrong\n", req.URL.Path)
 	})
