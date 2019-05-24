@@ -42,7 +42,7 @@ func runSeriesAsRoutine(f func(), count int, wait time.Duration, group *sync.Wai
 	group.Add(1)
 	go func() {
 		defer group.Done()
-		for i := 0; i < 30; i++ {
+		for i := 0; i < count; i++ {
 			f()
 			time.Sleep(wait)
 		}
@@ -56,12 +56,12 @@ func TestDatarace(t *testing.T) {
 	var group sync.WaitGroup
 
 	for i := 0; i < 5; i++ {
-		runSeriesAsRoutine(postJSON, 10, 300*time.Millisecond, &group)
+		runSeriesAsRoutine(postJSON, 3, time.Second, &group)
+		time.Sleep(time.Second)
 	}
-	time.Sleep(5 * time.Second)
 
 	for i := 0; i < 5; i++ {
-		runSeriesAsRoutine(getResult, 15, 200*time.Millisecond, &group)
+		runSeriesAsRoutine(getResult, 5, 200*time.Millisecond, &group)
 	}
 
 	group.Wait()
