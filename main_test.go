@@ -18,6 +18,10 @@ const (
 // Run server
 func init() {
 	go main()
+
+	postJSON(naiveURL)
+	postJSON(mutexURL)
+	postJSON(channelURL)
 }
 
 func postJSON(url string) {
@@ -81,4 +85,39 @@ func TestDataraceMutex(t *testing.T) {
 func TestDataraceChannel(t *testing.T) {
 	testDataraceURL(channelURL)
 }
+
+func BenchmarkGetNaive(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		getResult(naiveURL)
+	}
+}
+
+func BenchmarkGetMutex(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		getResult(mutexURL)
+	}
+}
+
+func BenchmarkGetChannel(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		getResult(channelURL)
+	}
+}
+
+func BenchmarkPostNaive(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		postJSON(naiveURL)
+	}
+}
+
+func BenchmarkPostMutex(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		postJSON(mutexURL)
+	}
+}
+
+func BenchmarkPostChannel(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		postJSON(channelURL)
+	}
 }
