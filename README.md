@@ -6,7 +6,8 @@ A small web service that take an image from somewhere and create a nice ascii ar
 It is used to show some feature of Golang:
 
 * Simple Native http framework
-* `go test` with `-race`  and `-bench` options
+* Simple Native JSON encoding
+* `go test` with `-race`, `-bench` and `-cover` options
 * go routine
 * channels
 
