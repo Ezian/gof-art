@@ -1,108 +1,25 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"image"
-	"io"
 	"net/http"
-	"time"
 
-	"github.com/Ezian/gof-art/ascii"
+	"github.com/Ezian/gof-art/channel"
+	"github.com/Ezian/gof-art/mutex"
+	"github.com/Ezian/gof-art/naive"
+	"github.com/Ezian/gof-art/utils"
 )
-
-type asciiRequest struct {
-	URL   string `json:"url"`
-	Width int    `json:"width"`
-}
-
-// Last image generated
-var (
-	postedImage = make(chan string)
-	gettedImage = make(chan string)
-)
-
-func cacheManager() {
-	var lastGenerated string
-	for {
-		select {
-		// New posted image
-		case lastGenerated = <-postedImage:
-			// No new image : we update the read channel
-		case gettedImage <- lastGenerated:
-		}
-	}
-
-}
-
-func downloadImage(url string) (*image.Image, error) {
-	response, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	result, _, err := image.Decode(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-func handleASCII(rw http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodPost:
-		handlePostASCII(rw, req)
-	case http.MethodGet:
-		handleGetASCII(rw, req)
-	}
-}
-func handleGetASCII(rw http.ResponseWriter, req *http.Request) {
-	// Naïve and wrong implementation
-	io.WriteString(rw, <-gettedImage)
-}
-
-func handlePostASCII(rw http.ResponseWriter, req *http.Request) {
-	decoder := json.NewDecoder(req.Body)
-	var data asciiRequest
-	err := decoder.Decode(&data)
-	if err != nil {
-		http.Error(rw, "Wrong json request", http.StatusBadRequest)
-		return
-	}
-	fmt.Fprintf(rw, "Converting image from %q... \n", data.URL)
-
-	start := time.Now()
-
-	image, err := downloadImage(data.URL)
-	if err != nil {
-		http.Error(rw, fmt.Sprintf("Cannot load or decode image at %q. %v", data.URL, err), http.StatusInternalServerError)
-		return
-	}
-
-	result, err := ascii.Convert2Ascii(ascii.ScaleImage(*image, data.Width))
-	if err != nil {
-		http.Error(rw, fmt.Sprintf("Generating Ascii Art failed. %v", err), http.StatusInternalServerError)
-		return
-	}
-	lastGenerated := fmt.Sprintf(`
-	Image from %q
-	Generated in %v
-
-	%s
-	`, data.URL, time.Since(start), string(result))
-
-	postedImage <- lastGenerated
-	io.WriteString(rw, lastGenerated)
-}
 
 func main() {
-	go cacheManager()
-
 	http.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(rw, "Hello, you've requested: %s and that's wrong\n", req.URL.Path)
 	})
-	http.HandleFunc("/ascii", handleASCII)
+	http.HandleFunc("/Gophers.jpg", func(rw http.ResponseWriter, req *http.Request) {
+		http.ServeFile(rw, req, "./images/Gophers.jpg")
+	})
+	http.HandleFunc("/naive", utils.CreateHandler(naive.HandlePost, naive.HandleGet))
+	http.HandleFunc("/mutex", utils.CreateHandler(mutex.HandlePost, mutex.HandleGet))
+	http.HandleFunc("/channel", utils.CreateHandler(channel.HandlePost, channel.HandleGet))
 
 	http.ListenAndServe(":9999", nil)
 }

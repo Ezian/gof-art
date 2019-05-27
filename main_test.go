@@ -9,11 +9,14 @@ import (
 	"time"
 )
 
-const url = "http://localhost:9999/ascii"
+// Run server
+func init() {
+	go main()
+}
 
-func postJSON() {
+func postJSON(url string) {
 
-	var jsonStr = []byte(`{"url":"https://2.bp.blogspot.com/-50t8QbXgxwI/WGgpaXNAYWI/AAAAAAAAEPE/SKJ-Bu12qpkrP7kklk1_QmWTehLoBRFcwCLcB/s1600/Gophers.jpg","width":80}`)
+	var jsonStr = []byte(`{"url":"http://localhost:9999/Gophers.jpg","width":80}`)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -24,18 +27,15 @@ func postJSON() {
 		return
 	}
 	defer resp.Body.Close()
-
-	fmt.Println("[POST] response Status:", resp.Status)
 }
 
-func getResult() {
+func getResult(url string) {
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println("[GET] error:", err)
 		return
 	}
 	defer resp.Body.Close()
-	fmt.Println("[GET] response Status:", resp.Status)
 }
 
 func runSeriesAsRoutine(f func(), count int, wait time.Duration, group *sync.WaitGroup) {
@@ -49,20 +49,29 @@ func runSeriesAsRoutine(f func(), count int, wait time.Duration, group *sync.Wai
 	}()
 }
 
-func TestDatarace(t *testing.T) {
-	// Run server
-	go main()
+func testDataraceURL(url string) {
 
 	var group sync.WaitGroup
 
-	for i := 0; i < 5; i++ {
-		runSeriesAsRoutine(postJSON, 3, time.Second, &group)
+	for i := 0; i < 2; i++ {
+		runSeriesAsRoutine(func() { postJSON(url) }, 10, 20*time.Millisecond, &group)
 		time.Sleep(time.Second)
 	}
 
-	for i := 0; i < 5; i++ {
-		runSeriesAsRoutine(getResult, 5, 200*time.Millisecond, &group)
+	for i := 0; i < 2; i++ {
+		runSeriesAsRoutine(func() { getResult(url) }, 10, 20*time.Millisecond, &group)
 	}
 
 	group.Wait()
+}
+
+func TestDataraceNaive(t *testing.T) {
+	testDataraceURL("http://localhost:9999/naive")
+}
+
+func TestDataraceMutex(t *testing.T) {
+	testDataraceURL("http://localhost:9999/mutex")
+}
+func TestDataraceChannel(t *testing.T) {
+	testDataraceURL("http://localhost:9999/channel")
 }

@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"encoding/json"
@@ -16,9 +16,6 @@ type asciiRequest struct {
 	Width int    `json:"width"`
 }
 
-// Last image generated
-var lastGenerated string
-
 func downloadImage(url string) (*image.Image, error) {
 	response, err := http.Get(url)
 	if err != nil {
@@ -33,23 +30,13 @@ func downloadImage(url string) (*image.Image, error) {
 
 	return &result, nil
 }
-func handleASCII(rw http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodPost:
-		handlePostASCII(rw, req)
-	case http.MethodGet:
-		handleGetASCII(rw, req)
-	}
-}
-func handleGetASCII(rw http.ResponseWriter, req *http.Request) {
-	// Naïve and wrong implementation
-	io.WriteString(rw, lastGenerated)
-}
 
-func handlePostASCII(rw http.ResponseWriter, req *http.Request) {
+// DownloadAndConvert download image, convert it to ascii, and write the response.
+// Return the converted image as string or the error
+func DownloadAndConvert(rw http.ResponseWriter, req *http.Request) (result string, err error) {
 	decoder := json.NewDecoder(req.Body)
 	var data asciiRequest
-	err := decoder.Decode(&data)
+	err = decoder.Decode(&data)
 	if err != nil {
 		http.Error(rw, "Wrong json request", http.StatusBadRequest)
 		return
@@ -64,26 +51,32 @@ func handlePostASCII(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	result, err := ascii.Convert2Ascii(ascii.ScaleImage(*image, data.Width))
+	img, err := ascii.Convert2Ascii(ascii.ScaleImage(*image, data.Width))
 	if err != nil {
 		http.Error(rw, fmt.Sprintf("Generating Ascii Art failed. %v", err), http.StatusInternalServerError)
 		return
 	}
-	lastGenerated = fmt.Sprintf(`
+	result = fmt.Sprintf(`
 	Image from %q
 	Generated in %v
 
 	%s
-	`, data.URL, time.Since(start), string(result))
+	`, data.URL, time.Since(start), string(img))
 
-	io.WriteString(rw, lastGenerated)
+	io.WriteString(rw, result)
+	return
 }
 
-func main() {
-	http.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(rw, "Hello, you've requested: %s and that's wrong\n", req.URL.Path)
-	})
-	http.HandleFunc("/ascii", handleASCII)
-
-	http.ListenAndServe(":9999", nil)
+// CreateHandler create a post/get handler with both function
+func CreateHandler(posthandler, getHandler func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodPost:
+			posthandler(rw, req)
+		case http.MethodGet:
+			getHandler(rw, req)
+		default:
+			http.Error(rw, "POST or GET Method are the only allowed", http.StatusMethodNotAllowed)
+		}
+	}
 }
