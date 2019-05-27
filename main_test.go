@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	naiveURL   = "http://localhost:9999/naive"
+	mutexURL   = "http://localhost:9999/mutex"
+	channelURL = "http://localhost:9999/channel"
+)
+
 // Run server
 func init() {
 	go main()
@@ -66,12 +72,13 @@ func testDataraceURL(url string) {
 }
 
 func TestDataraceNaive(t *testing.T) {
-	testDataraceURL("http://localhost:9999/naive")
+	testDataraceURL(naiveURL)
 }
 
 func TestDataraceMutex(t *testing.T) {
-	testDataraceURL("http://localhost:9999/mutex")
+	testDataraceURL(mutexURL)
 }
 func TestDataraceChannel(t *testing.T) {
-	testDataraceURL("http://localhost:9999/channel")
+	testDataraceURL(channelURL)
+}
 }
