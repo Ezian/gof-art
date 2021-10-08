@@ -1,5 +1,6 @@
 
 # gof-art
+[![Go Report Card](https://goreportcard.com/badge/github.com/Ezian/gof-art)](https://goreportcard.com/report/github.com/Ezian/gof-art)
 
 A small web service that take an image from somewhere and create a nice ascii art version of it.
 
